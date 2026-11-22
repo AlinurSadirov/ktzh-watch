@@ -1,0 +1,35 @@
+name: ktzh-watch
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # каждые 5 минут (GitHub может запускать с задержкой)
+  workflow_dispatch:         # ручной запуск кнопкой Run workflow
+
+concurrency:
+  group: ktzh-watch
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      # состояние (сколько мест было в прошлый раз) переживает между запусками
+      - uses: actions/cache@v4
+        with:
+          path: state.json
+          key: ktzh-state-${{ github.run_id }}
+          restore-keys: ktzh-state-
+
+      - run: python ktzh_watch.py --once
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
